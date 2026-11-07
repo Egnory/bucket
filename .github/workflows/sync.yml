@@ -1,0 +1,38 @@
+name: Sync Scoop Manifest
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-7zip
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate patched manifest
+        run: python scripts/patch.py
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add bucket/7zip.json
+
+          if git diff --cached --quiet; then
+            echo "No changes detected."
+          else
+            git commit -m "Update 7-Zip manifest"
+            git push
+          fi
