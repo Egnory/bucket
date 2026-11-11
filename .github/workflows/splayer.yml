@@ -14,113 +14,49 @@ concurrency:
 
 jobs:
   update:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          token: ${{ github.token }}
+      - uses: actions/checkout@v4
 
-      - name: Update Splayer manifest
-        shell: pwsh
+      - name: Update manifest
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          $ErrorActionPreference = "Stop"
+          set -euo pipefail
 
-          $repo = "SPlayer-Dev/SPlayer-Next"
-          $manifestPath = "bucket/splayer.json"
+          repo="SPlayer-Dev/SPlayer-Next"
+          manifest="bucket/splayer.json"
 
-          if (!(Test-Path $manifestPath)) {
-            throw "Manifest not found: $manifestPath"
-          }
+          release=$(gh api "repos/$repo/releases/latest")
+          version=$(jq -r '.tag_name | sub("^v"; "")' <<< "$release")
+          asset=$(jq -ce --arg name "SPlayer-Next-$version-x64-portable.exe" \
+            '.assets[] | select(.name == $name)' <<< "$release")
 
-          # Get latest stable release
-          $release = Invoke-RestMethod `
-            -Uri "https://api.github.com/repos/$repo/releases/latest" `
-            -Headers @{
-              Accept = "application/vnd.github+json"
-              Authorization = "Bearer $env:GITHUB_TOKEN"
-              "X-GitHub-Api-Version" = "2022-11-28"
-              "User-Agent" = "Splayer-Scoop-Updater"
-            }
+          url=$(jq -r '.browser_download_url' <<< "$asset")
+          hash=$(jq -r '.digest // empty | sub("^sha256:"; "")' <<< "$asset")
 
-          $version = $release.tag_name -replace '^v', ''
+          if [[ -z "$hash" ]]; then
+            hash=$(curl -fsSL "$url" | sha256sum | cut -d ' ' -f 1)
+          fi
 
-          Write-Host "Latest stable version: $version"
-
-          # Find Windows x64 portable asset
-          $assetName = "SPlayer-Next-$version-x64-portable.exe"
-
-          $asset = $release.assets |
-            Where-Object { $_.name -eq $assetName } |
-            Select-Object -First 1
-
-          if (!$asset) {
-            throw "Release asset not found: $assetName"
-          }
-
-          $url = $asset.browser_download_url
-
-          # Skip if already up to date
-          $manifest = Get-Content $manifestPath -Raw |
-            ConvertFrom-Json -AsHashtable
-
-          if ($manifest.version -eq $version) {
-            Write-Host "Already up to date: $version"
+          if [[ "$(jq -r '.version' "$manifest")" == "$version" ]]; then
+            echo "Already up to date: $version"
             exit 0
-          }
+          fi
 
-          # Get SHA256
-          # Prefer GitHub asset digest to avoid downloading unnecessarily
-          if ($asset.digest -match '^sha256:([a-fA-F0-9]{64})$') {
-            $hash = $Matches[1].ToLower()
-          }
-          else {
-            Write-Host "Downloading asset to calculate SHA256..."
+          jq --arg version "$version" --arg url "$url" --arg hash "$hash" \
+            '.version = $version | .url = $url | .hash = $hash' \
+            "$manifest" > "$RUNNER_TEMP/manifest.json"
 
-            $downloadPath = Join-Path $env:RUNNER_TEMP $assetName
-
-            Invoke-WebRequest `
-              -Uri $url `
-              -OutFile $downloadPath
-
-            $hash = (Get-FileHash `
-              -Path $downloadPath `
-              -Algorithm SHA256).Hash.ToLower()
-          }
-
-          Write-Host "Version: $version"
-          Write-Host "SHA256: $hash"
-
-          # Update manifest
-          $manifest.version = $version
-          $manifest.url = $url
-          $manifest.hash = $hash
-
-          $manifest |
-            ConvertTo-Json -Depth 100 |
-            Set-Content $manifestPath -Encoding utf8
-
-          Write-Host "Manifest updated successfully."
+          mv "$RUNNER_TEMP/manifest.json" "$manifest"
 
       - name: Commit changes
-        shell: pwsh
         run: |
-          $ErrorActionPreference = "Stop"
-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
           git add bucket/splayer.json
-
-          git diff --cached --quiet
-
-          if ($LASTEXITCODE -ne 0) {
+          git diff --cached --quiet || {
             git commit -m "Update splayer"
             git push
-          }
-          else {
-            Write-Host "No changes to commit."
           }
