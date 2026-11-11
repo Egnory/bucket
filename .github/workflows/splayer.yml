@@ -31,50 +31,48 @@ jobs:
 
           mkdir -p bucket
 
-          # Get latest stable release
           release=$(gh api "repos/$repo/releases/latest")
           version=$(jq -er '.tag_name | sub("^v"; "")' <<< "$release")
 
-          # Find Windows x64 portable asset
           asset=$(jq -ce \
             --arg name "SPlayer-Next-$version-x64-portable.exe" \
             '.assets[] | select(.name == $name)' <<< "$release")
 
           url=$(jq -er '.browser_download_url' <<< "$asset")
-
-          # Get SHA256
           hash=$(jq -r '.digest // empty | sub("^sha256:"; "")' <<< "$asset")
 
           if [[ -z "$hash" ]]; then
             download="$RUNNER_TEMP/splayer.exe"
-
             curl -fL --retry 3 "$url" -o "$download"
-
             hash=$(sha256sum "$download" | cut -d ' ' -f 1)
           fi
 
-          # Skip unchanged version
-          if [[ -f "$manifest" ]] &&
-             [[ "$(jq -r '.version' "$manifest")" == "$version" ]]; then
-            echo "Already up to date: $version"
-            exit 0
-          fi
+          pre_install='Get-ChildItem "$dir" -Filter "SPlayer-Next-*-x64-portable.exe" | Select-Object -First 1 | Rename-Item -NewName "splayer.exe"'
 
-          # Create or update manifest
           if [[ -f "$manifest" ]]; then
             jq \
               --arg version "$version" \
               --arg url "$url" \
               --arg hash "$hash" \
-              '.version = $version |
-               .url = $url |
-               .hash = $hash' \
-              "$manifest" > "$RUNNER_TEMP/manifest.json"
+              --arg pre_install "$pre_install" \
+              '
+                .version = $version |
+                .description = "SPlayer-Next music player" |
+                .homepage = "https://github.com/SPlayer-Dev/SPlayer-Next" |
+                .license = "AGPL-3.0" |
+                .url = $url |
+                .hash = $hash |
+                .pre_install = [$pre_install] |
+                .bin = "splayer.exe" |
+                .persist = "UserData" |
+                .autoupdate.url = "https://github.com/SPlayer-Dev/SPlayer-Next/releases/download/v$version/SPlayer-Next-$version-x64-portable.exe"
+              ' "$manifest" > "$RUNNER_TEMP/manifest.json"
           else
             jq -n \
               --arg version "$version" \
               --arg url "$url" \
               --arg hash "$hash" \
+              --arg pre_install "$pre_install" \
               '{
                 version: $version,
                 description: "SPlayer-Next music player",
@@ -82,9 +80,7 @@ jobs:
                 license: "AGPL-3.0",
                 url: $url,
                 hash: $hash,
-                pre_install: [
-                  "Get-ChildItem \"$dir\" -Filter '\''SPlayer-Next-*-x64-portable.exe'\'' | Select-Object -First 1 | Rename-Item -NewName '\''splayer.exe'\''"
-                ],
+                pre_install: [$pre_install],
                 bin: "splayer.exe",
                 persist: "UserData",
                 autoupdate: {
@@ -95,8 +91,10 @@ jobs:
 
           mv "$RUNNER_TEMP/manifest.json" "$manifest"
 
-          echo "Updated Splayer to $version"
+          echo "Manifest version: $version"
           echo "SHA256: $hash"
+          echo "Manifest content:"
+          cat "$manifest"
 
       - name: Commit changes
         run: |
@@ -111,5 +109,5 @@ jobs:
             git commit -m "Update splayer"
             git push
           else
-            echo "No changes to commit."
+            echo "Manifest unchanged."
           fi
