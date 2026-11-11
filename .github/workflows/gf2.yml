@@ -1,0 +1,120 @@
+name: GF2 Decrypt
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gf2-ab-decrypt-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          REPO="0x795E69D8/exilium-tools"
+          ASSET="gf2_ab_decrypt.exe"
+          MANIFEST="bucket/gf2_ab_decrypt.json"
+          TEMP="$RUNNER_TEMP/gf2_ab_decrypt.exe"
+          API="https://api.github.com/repos/$REPO/releases"
+
+          mkdir -p bucket
+
+          # Get latest matching release
+          RELEASE=$(curl -fLsS --retry 3 \
+            -H "Accept: application/vnd.github+json" \
+            "$API?per_page=100" |
+            jq -cer '
+              [
+                .[]
+                | select(.draft == false and .prerelease == false)
+                | select(.tag_name | startswith("gf2_ab_decrypt_v"))
+              ]
+              | sort_by(.published_at)
+              | last
+            ')
+
+          TAG=$(jq -r '.tag_name' <<< "$RELEASE")
+          VERSION="${TAG#gf2_ab_decrypt_v}"
+
+          URL=$(jq -er --arg asset "$ASSET" '
+            .assets[]
+            | select(.name == $asset)
+            | .browser_download_url
+          ' <<< "$RELEASE")
+
+          echo "Release: $TAG"
+          echo "Download: $URL"
+
+          # Download and calculate SHA256
+          curl -fLsS --retry 3 "$URL" -o "$TEMP"
+          HASH=$(sha256sum "$TEMP" | cut -d ' ' -f 1)
+
+          echo "SHA256: $HASH"
+
+          # Generate manifest
+          jq -n \
+            --arg version "$VERSION" \
+            --arg url "$URL" \
+            --arg hash "$HASH" \
+            '{
+              version: $version,
+              description: "Girls Frontline 2 Asset Bundle Decryption Tool",
+              homepage: "https://github.com/0x795E69D8/exilium-tools",
+              license: "GPL-3.0-only",
+              architecture: {
+                "64bit": {
+                  url: $url,
+                  hash: $hash
+                }
+              },
+              bin: "gf2_ab_decrypt.exe",
+              checkver: {
+                github: "https://github.com/0x795E69D8/exilium-tools",
+                regex: "gf2_ab_decrypt_v([\\d.]+)"
+              },
+              autoupdate: {
+                architecture: {
+                  "64bit": {
+                    url: "https://github.com/0x795E69D8/exilium-tools/releases/download/gf2_ab_decrypt_v$version/gf2_ab_decrypt.exe"
+                  }
+                }
+              }
+            }' > "$MANIFEST"
+
+          jq empty "$MANIFEST"
+
+          echo "Generated manifest:"
+          cat "$MANIFEST"
+
+      - name: Commit changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add bucket/gf2_ab_decrypt.json
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Update GF2 AB Decrypt manifest"
+          git push

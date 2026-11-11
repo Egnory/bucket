@@ -1,0 +1,111 @@
+name: GFA Decrypt
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gf2-asset-bundle-decryption
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          REPO="nijinekoyo/GF2AssetBundleDecryption"
+          ASSET="GF2AssetBundleDecryption_Windows_x86_64.exe"
+          MANIFEST="bucket/gf2assetbundledecryption.json"
+
+          API="https://api.github.com/repos/$REPO/releases/latest"
+
+          mkdir -p bucket
+
+          # Get latest release
+          RELEASE=$(curl -fLsS --retry 3 \
+            -H "Accept: application/vnd.github+json" \
+            "$API")
+
+          VERSION=$(jq -er '.tag_name | ltrimstr("v")' <<< "$RELEASE")
+
+          URL=$(jq -er --arg asset "$ASSET" '
+            .assets[]
+            | select(.name == $asset)
+            | .browser_download_url
+          ' <<< "$RELEASE")
+
+          echo "Version: $VERSION"
+          echo "Download: $URL"
+
+          # Download executable and calculate SHA256
+          TEMP="$RUNNER_TEMP/$ASSET"
+
+          curl -fLsS --retry 3 "$URL" -o "$TEMP"
+
+          HASH=$(sha256sum "$TEMP" | cut -d ' ' -f 1)
+
+          echo "SHA256: $HASH"
+
+          # Generate Scoop manifest
+          jq -n \
+            --arg version "$VERSION" \
+            --arg url "$URL" \
+            --arg hash "$HASH" \
+            '{
+              version: $version,
+              description: "Girls Frontline 2 Asset Bundle Decryption Tool",
+              homepage: "https://github.com/nijinekoyo/GF2AssetBundleDecryption",
+              architecture: {
+                "64bit": {
+                  url: $url,
+                  hash: $hash
+                }
+              },
+              bin: "GF2AssetBundleDecryption_Windows_x86_64.exe",
+              checkver: {
+                github: "https://github.com/nijinekoyo/GF2AssetBundleDecryption"
+              },
+              autoupdate: {
+                architecture: {
+                  "64bit": {
+                    url: "https://github.com/nijinekoyo/GF2AssetBundleDecryption/releases/download/v$version/GF2AssetBundleDecryption_Windows_x86_64.exe"
+                  }
+                }
+              }
+            }' > "$MANIFEST"
+
+          jq empty "$MANIFEST"
+
+          echo "Generated manifest:"
+          cat "$MANIFEST"
+
+      - name: Commit changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add bucket/gf2assetbundledecryption.json
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Update GF2 Asset Bundle Decryption"
+          git push
