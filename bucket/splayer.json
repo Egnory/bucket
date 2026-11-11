@@ -8,5 +8,9 @@
   "persist": "UserData",
   "autoupdate": {
     "url": "https://github.com/SPlayer-Dev/SPlayer-Next/releases/download/v$version/SPlayer-Next-$version-x64-portable.exe"
-  }
+  },
+  "license": "AGPL-3.0",
+  "pre_install": [
+    "Get-ChildItem \"$dir\" -Filter \"SPlayer-Next-*-x64-portable.exe\" | Select-Object -First 1 | Rename-Item -NewName \"splayer.exe\""
+  ]
 }
