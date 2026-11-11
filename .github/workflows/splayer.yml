@@ -22,6 +22,7 @@ jobs:
       - name: Update manifest
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
           set -euo pipefail
 
@@ -32,21 +33,23 @@ jobs:
 
           # Get latest stable release
           release=$(gh api "repos/$repo/releases/latest")
-          version=$(jq -r '.tag_name | sub("^v"; "")' <<< "$release")
+          version=$(jq -er '.tag_name | sub("^v"; "")' <<< "$release")
 
-          # Find portable asset
+          # Find Windows x64 portable asset
           asset=$(jq -ce \
             --arg name "SPlayer-Next-$version-x64-portable.exe" \
             '.assets[] | select(.name == $name)' <<< "$release")
 
-          url=$(jq -r '.browser_download_url' <<< "$asset")
+          url=$(jq -er '.browser_download_url' <<< "$asset")
 
           # Get SHA256
           hash=$(jq -r '.digest // empty | sub("^sha256:"; "")' <<< "$asset")
 
           if [[ -z "$hash" ]]; then
             download="$RUNNER_TEMP/splayer.exe"
-            curl -fsSL "$url" -o "$download"
+
+            curl -fL --retry 3 "$url" -o "$download"
+
             hash=$(sha256sum "$download" | cut -d ' ' -f 1)
           fi
 
@@ -76,8 +79,12 @@ jobs:
                 version: $version,
                 description: "SPlayer-Next music player",
                 homepage: "https://github.com/SPlayer-Dev/SPlayer-Next",
+                license: "AGPL-3.0",
                 url: $url,
                 hash: $hash,
+                pre_install: [
+                  "Get-ChildItem \"$dir\" -Filter '\''SPlayer-Next-*-x64-portable.exe'\'' | Select-Object -First 1 | Rename-Item -NewName '\''splayer.exe'\''"
+                ],
                 bin: "splayer.exe",
                 persist: "UserData",
                 autoupdate: {
@@ -89,6 +96,7 @@ jobs:
           mv "$RUNNER_TEMP/manifest.json" "$manifest"
 
           echo "Updated Splayer to $version"
+          echo "SHA256: $hash"
 
       - name: Commit changes
         run: |
@@ -102,4 +110,6 @@ jobs:
           if ! git diff --cached --quiet; then
             git commit -m "Update splayer"
             git push
+          else
+            echo "No changes to commit."
           fi
