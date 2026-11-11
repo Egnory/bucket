@@ -1,0 +1,12 @@
+{
+  "version": "1.2.0",
+  "description": "SPlayer-Next music player",
+  "homepage": "https://github.com/SPlayer-Dev/SPlayer-Next",
+  "url": "https://github.com/SPlayer-Dev/SPlayer-Next/releases/download/v1.2.0/SPlayer-Next-1.2.0-x64-portable.exe",
+  "hash": "a332d7c0e82be9634d2460b4d523188eec5552e5d9e502cb0741a3f7d0fad974",
+  "bin": "splayer.exe",
+  "persist": "UserData",
+  "autoupdate": {
+    "url": "https://github.com/SPlayer-Dev/SPlayer-Next/releases/download/v$version/SPlayer-Next-$version-x64-portable.exe"
+  }
+}
