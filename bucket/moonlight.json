@@ -1,6 +1,6 @@
 {
   "version": "6.5.4",
-  "description": "Moonlight V+ game streaming client",
+  "description": "GameStream client for PCs (Windows, Mac, Linux, and Steam Link)",
   "homepage": "https://github.com/qiin2333/moonlight-qt",
   "license": "GPL-3.0-only",
   "architecture": {
