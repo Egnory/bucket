@@ -22,6 +22,7 @@ jobs:
       - name: Update manifest
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
           set -euo pipefail
 
@@ -30,51 +31,62 @@ jobs:
 
           mkdir -p bucket
 
-          # Get latest stable release
           release=$(gh api "repos/$repo/releases/latest")
-          version=$(jq -r '.tag_name | sub("^v"; "")' <<< "$release")
+          version=$(jq -er '.tag_name | sub("^v"; "")' <<< "$release")
 
-          # Find x64 portable ZIP
           asset=$(jq -ce \
             --arg name "Moonlight-VPlus-Portable-x64-$version.zip" \
             '.assets[] | select(.name == $name)' <<< "$release")
 
-          url=$(jq -r '.browser_download_url' <<< "$asset")
-
-          # Get SHA256
+          url=$(jq -er '.browser_download_url' <<< "$asset")
           hash=$(jq -r '.digest // empty | sub("^sha256:"; "")' <<< "$asset")
 
           if [[ -z "$hash" ]]; then
             download="$RUNNER_TEMP/moonlight.zip"
-            curl -fsSL "$url" -o "$download"
+            curl -fL --retry 3 "$url" -o "$download"
             hash=$(sha256sum "$download" | cut -d ' ' -f 1)
           fi
 
-          # Skip unchanged version
-          if [[ -f "$manifest" ]] &&
-             [[ "$(jq -r '.version' "$manifest")" == "$version" ]]; then
-            echo "Already up to date: $version"
-            exit 0
-          fi
+          jq \
+            --arg version "$version" \
+            --arg url "$url" \
+            --arg hash "$hash" \
+            '
+              .version = $version |
+              .description = "GameStream client for PCs (Windows, Mac, Linux, and Steam Link)" |
+              .homepage = "https://github.com/qiin2333/moonlight-qt" |
+              .license = "GPL-3.0-only" |
+              .architecture = (.architecture // {}) |
+              .architecture."64bit" = (
+                (.architecture."64bit" // {}) +
+                {
+                  url: $url,
+                  hash: $hash
+                }
+              ) |
+              .pre_install = "if (!(Test-Path \"$persist_dir$($cfg = '\''/Moonlight Game Streaming Project'\'')\")) { $null = New-Item -ItemType Directory \"$dir$cfg\" }" |
+              .bin = "Moonlight.exe" |
+              .persist = "Moonlight Game Streaming Project" |
+              .checkver = {
+                github: "https://github.com/qiin2333/moonlight-qt"
+              } |
+              .autoupdate = (.autoupdate // {}) |
+              .autoupdate.architecture = (.autoupdate.architecture // {}) |
+              .autoupdate.architecture."64bit" = (
+                (.autoupdate.architecture."64bit" // {}) +
+                {
+                  url: "https://github.com/qiin2333/moonlight-qt/releases/download/v$version/Moonlight-VPlus-Portable-x64-$version.zip"
+                }
+              )
+            ' "$manifest" 2>/dev/null > "$RUNNER_TEMP/manifest.json" || {
 
-          # Create or update manifest
-          if [[ -f "$manifest" ]]; then
-            jq \
-              --arg version "$version" \
-              --arg url "$url" \
-              --arg hash "$hash" \
-              '.version = $version |
-               .architecture."64bit".url = $url |
-               .architecture."64bit".hash = $hash' \
-              "$manifest" > "$RUNNER_TEMP/manifest.json"
-          else
             jq -n \
               --arg version "$version" \
               --arg url "$url" \
               --arg hash "$hash" \
               '{
                 version: $version,
-                description: "Moonlight V+ game streaming client",
+                description: "GameStream client for PCs (Windows, Mac, Linux, and Steam Link)",
                 homepage: "https://github.com/qiin2333/moonlight-qt",
                 license: "GPL-3.0-only",
                 architecture: {
@@ -97,11 +109,14 @@ jobs:
                   }
                 }
               }' > "$RUNNER_TEMP/manifest.json"
-          fi
+          }
 
           mv "$RUNNER_TEMP/manifest.json" "$manifest"
 
-          echo "Updated Moonlight to $version"
+          echo "Manifest version: $version"
+          echo "SHA256: $hash"
+          echo "Manifest content:"
+          cat "$manifest"
 
       - name: Commit changes
         run: |
@@ -115,4 +130,6 @@ jobs:
           if ! git diff --cached --quiet; then
             git commit -m "Update moonlight"
             git push
+          else
+            echo "Manifest unchanged."
           fi
