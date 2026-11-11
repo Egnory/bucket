@@ -28,35 +28,78 @@ jobs:
           repo="SPlayer-Dev/SPlayer-Next"
           manifest="bucket/splayer.json"
 
+          mkdir -p bucket
+
+          # Get latest stable release
           release=$(gh api "repos/$repo/releases/latest")
           version=$(jq -r '.tag_name | sub("^v"; "")' <<< "$release")
-          asset=$(jq -ce --arg name "SPlayer-Next-$version-x64-portable.exe" \
+
+          # Find portable asset
+          asset=$(jq -ce \
+            --arg name "SPlayer-Next-$version-x64-portable.exe" \
             '.assets[] | select(.name == $name)' <<< "$release")
 
           url=$(jq -r '.browser_download_url' <<< "$asset")
+
+          # Get SHA256
           hash=$(jq -r '.digest // empty | sub("^sha256:"; "")' <<< "$asset")
 
           if [[ -z "$hash" ]]; then
-            hash=$(curl -fsSL "$url" | sha256sum | cut -d ' ' -f 1)
+            download="$RUNNER_TEMP/splayer.exe"
+            curl -fsSL "$url" -o "$download"
+            hash=$(sha256sum "$download" | cut -d ' ' -f 1)
           fi
 
-          if [[ "$(jq -r '.version' "$manifest")" == "$version" ]]; then
+          # Skip unchanged version
+          if [[ -f "$manifest" ]] &&
+             [[ "$(jq -r '.version' "$manifest")" == "$version" ]]; then
             echo "Already up to date: $version"
             exit 0
           fi
 
-          jq --arg version "$version" --arg url "$url" --arg hash "$hash" \
-            '.version = $version | .url = $url | .hash = $hash' \
-            "$manifest" > "$RUNNER_TEMP/manifest.json"
+          # Create or update manifest
+          if [[ -f "$manifest" ]]; then
+            jq \
+              --arg version "$version" \
+              --arg url "$url" \
+              --arg hash "$hash" \
+              '.version = $version |
+               .url = $url |
+               .hash = $hash' \
+              "$manifest" > "$RUNNER_TEMP/manifest.json"
+          else
+            jq -n \
+              --arg version "$version" \
+              --arg url "$url" \
+              --arg hash "$hash" \
+              '{
+                version: $version,
+                description: "SPlayer-Next music player",
+                homepage: "https://github.com/SPlayer-Dev/SPlayer-Next",
+                url: $url,
+                hash: $hash,
+                bin: "splayer.exe",
+                persist: "UserData",
+                autoupdate: {
+                  url: "https://github.com/SPlayer-Dev/SPlayer-Next/releases/download/v$version/SPlayer-Next-$version-x64-portable.exe"
+                }
+              }' > "$RUNNER_TEMP/manifest.json"
+          fi
 
           mv "$RUNNER_TEMP/manifest.json" "$manifest"
 
+          echo "Updated Splayer to $version"
+
       - name: Commit changes
         run: |
+          set -euo pipefail
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add bucket/splayer.json
-          git diff --cached --quiet || {
+
+          if ! git diff --cached --quiet; then
             git commit -m "Update splayer"
             git push
-          }
+          fi
