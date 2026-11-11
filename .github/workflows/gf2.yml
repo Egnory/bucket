@@ -73,6 +73,7 @@ jobs:
             --arg hash "$HASH" \
             '{
               version: $version,
+              license: "Unknown",
               description: "Girls Frontline 2 Asset Bundle Decryption Tool",
               homepage: "https://github.com/0x795E69D8/exilium-tools",
               license: "GPL-3.0-only",
