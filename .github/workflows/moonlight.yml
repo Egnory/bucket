@@ -14,100 +14,105 @@ concurrency:
 
 jobs:
   update:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Update Moonlight manifest
-        shell: pwsh
+      - name: Update manifest
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          $ErrorActionPreference = "Stop"
+          set -euo pipefail
 
-          $repo = "qiin2333/moonlight-qt"
-          $manifestPath = "bucket/moonlight.json"
+          repo="qiin2333/moonlight-qt"
+          manifest="bucket/moonlight.json"
 
-          $headers = @{
-            Accept = "application/vnd.github+json"
-            Authorization = "Bearer $env:GITHUB_TOKEN"
-            "X-GitHub-Api-Version" = "2022-11-28"
-            "User-Agent" = "Moonlight-Scoop-Updater"
-          }
+          mkdir -p bucket
 
           # Get latest stable release
-          $release = Invoke-RestMethod `
-            -Uri "https://api.github.com/repos/$repo/releases/latest" `
-            -Headers $headers
-
-          $version = $release.tag_name -replace '^v', ''
-
-          Write-Host "Latest stable version: $version"
+          release=$(gh api "repos/$repo/releases/latest")
+          version=$(jq -r '.tag_name | sub("^v"; "")' <<< "$release")
 
           # Find x64 portable ZIP
-          $assetName = "Moonlight-VPlus-Portable-x64-$version.zip"
+          asset=$(jq -ce \
+            --arg name "Moonlight-VPlus-Portable-x64-$version.zip" \
+            '.assets[] | select(.name == $name)' <<< "$release")
 
-          $asset = $release.assets |
-            Where-Object { $_.name -eq $assetName } |
-            Select-Object -First 1
+          url=$(jq -r '.browser_download_url' <<< "$asset")
 
-          if (!$asset) {
-            throw "Asset not found: $assetName"
-          }
+          # Get SHA256
+          hash=$(jq -r '.digest // empty | sub("^sha256:"; "")' <<< "$asset")
 
-          # Load manifest
-          $manifest = Get-Content $manifestPath -Raw |
-            ConvertFrom-Json -AsHashtable
+          if [[ -z "$hash" ]]; then
+            download="$RUNNER_TEMP/moonlight.zip"
+            curl -fsSL "$url" -o "$download"
+            hash=$(sha256sum "$download" | cut -d ' ' -f 1)
+          fi
 
-          if ($manifest.version -eq $version) {
-            Write-Host "Already up to date: $version"
+          # Skip unchanged version
+          if [[ -f "$manifest" ]] &&
+             [[ "$(jq -r '.version' "$manifest")" == "$version" ]]; then
+            echo "Already up to date: $version"
             exit 0
-          }
+          fi
 
-          # Calculate SHA256
-          $downloadPath = Join-Path $env:RUNNER_TEMP $assetName
+          # Create or update manifest
+          if [[ -f "$manifest" ]]; then
+            jq \
+              --arg version "$version" \
+              --arg url "$url" \
+              --arg hash "$hash" \
+              '.version = $version |
+               .architecture."64bit".url = $url |
+               .architecture."64bit".hash = $hash' \
+              "$manifest" > "$RUNNER_TEMP/manifest.json"
+          else
+            jq -n \
+              --arg version "$version" \
+              --arg url "$url" \
+              --arg hash "$hash" \
+              '{
+                version: $version,
+                description: "Moonlight V+ game streaming client",
+                homepage: "https://github.com/qiin2333/moonlight-qt",
+                license: "GPL-3.0-only",
+                architecture: {
+                  "64bit": {
+                    url: $url,
+                    hash: $hash
+                  }
+                },
+                pre_install: "if (!(Test-Path \"$persist_dir$($cfg = '\''/Moonlight Game Streaming Project'\'')\")) { $null = New-Item -ItemType Directory \"$dir$cfg\" }",
+                bin: "Moonlight.exe",
+                persist: "Moonlight Game Streaming Project",
+                checkver: {
+                  github: "https://github.com/qiin2333/moonlight-qt"
+                },
+                autoupdate: {
+                  architecture: {
+                    "64bit": {
+                      url: "https://github.com/qiin2333/moonlight-qt/releases/download/v$version/Moonlight-VPlus-Portable-x64-$version.zip"
+                    }
+                  }
+                }
+              }' > "$RUNNER_TEMP/manifest.json"
+          fi
 
-          Invoke-WebRequest `
-            -Uri $asset.browser_download_url `
-            -OutFile $downloadPath
+          mv "$RUNNER_TEMP/manifest.json" "$manifest"
 
-          $hash = (Get-FileHash `
-            -Path $downloadPath `
-            -Algorithm SHA256).Hash.ToLower()
-
-          # Update manifest
-          $manifest.version = $version
-          $manifest.architecture."64bit".url = $asset.browser_download_url
-          $manifest.architecture."64bit".hash = $hash
-
-          $manifest |
-            ConvertTo-Json -Depth 100 |
-            Set-Content $manifestPath -Encoding utf8
-
-          Write-Host "Updated Moonlight to $version"
-          Write-Host "SHA256: $hash"
+          echo "Updated Moonlight to $version"
 
       - name: Commit changes
-        shell: pwsh
         run: |
-          $ErrorActionPreference = "Stop"
+          set -euo pipefail
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add bucket/moonlight.json
 
-          git diff --cached --quiet
-
-          if ($LASTEXITCODE -eq 1) {
+          if ! git diff --cached --quiet; then
             git commit -m "Update moonlight"
             git push
-          }
-          elseif ($LASTEXITCODE -ne 0) {
-            throw "Git diff failed."
-          }
-          else {
-            Write-Host "No changes to commit."
-          }
+          fi
