@@ -1,0 +1,75 @@
+name: Venera
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: venera-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SOURCE="https://raw.githubusercontent.com/haukuen/endless/master/bucket/venera.json"
+          MANIFEST="bucket/venera.json"
+          TEMP="$RUNNER_TEMP/venera.json"
+
+          mkdir -p bucket
+
+          # Download upstream manifest
+          curl -fLsS --retry 3 "$SOURCE" -o "$TEMP"
+
+          # Validate JSON and required fields
+          jq -e '
+            (.version | type == "string" and length > 0) and
+            (.architecture."64bit".url | type == "string" and startswith("https://")) and
+            (.architecture."64bit".hash | test("^[a-fA-F0-9]{64}$")) and
+            (.autoupdate.architecture."64bit".url | type == "string")
+          ' "$TEMP" > /dev/null
+
+          echo "Upstream version: $(jq -r '.version' "$TEMP")"
+
+          # Skip only when the entire manifest is identical
+          if [[ -f "$MANIFEST" ]] && cmp -s "$TEMP" "$MANIFEST"; then
+            echo "Manifest unchanged."
+            exit 0
+          fi
+
+          mv "$TEMP" "$MANIFEST"
+
+          echo "Manifest updated."
+          cat "$MANIFEST"
+
+      - name: Commit changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add bucket/venera.json
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Update Venera manifest"
+          git push
