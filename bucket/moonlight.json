@@ -1,0 +1,25 @@
+{
+  "version": "6.5.4",
+  "description": "Moonlight V+ game streaming client",
+  "homepage": "https://github.com/qiin2333/moonlight-qt",
+  "license": "GPL-3.0-only",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/qiin2333/moonlight-qt/releases/download/v6.5.4/Moonlight-VPlus-Portable-x64-6.5.4.zip",
+      "hash": "cac0a607e8cc560ae51917df3a3c7a17194f6d1b8864f4cec0b9fe168e88efb4"
+    }
+  },
+  "pre_install": "if (!(Test-Path \"$persist_dir$($cfg = '/Moonlight Game Streaming Project')\")) { $null = New-Item -ItemType Directory \"$dir$cfg\" }",
+  "bin": "Moonlight.exe",
+  "persist": "Moonlight Game Streaming Project",
+  "checkver": {
+    "github": "https://github.com/qiin2333/moonlight-qt"
+  },
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/qiin2333/moonlight-qt/releases/download/v$version/Moonlight-VPlus-Portable-x64-$version.zip"
+      }
+    }
+  }
+}
