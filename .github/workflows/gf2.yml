@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: gf2-ab-decrypt-update
+  group: gf2-decrypt
   cancel-in-progress: false
 
 jobs:
@@ -28,7 +28,7 @@ jobs:
 
           REPO="0x795E69D8/exilium-tools"
           ASSET="gf2_ab_decrypt.exe"
-          MANIFEST="bucket/gf2_ab_decrypt.json"
+          MANIFEST="bucket/gf2.json"
           TEMP="$RUNNER_TEMP/gf2_ab_decrypt.exe"
           API="https://api.github.com/repos/$REPO/releases"
 
@@ -48,7 +48,7 @@ jobs:
               | last
             ')
 
-          TAG=$(jq -r '.tag_name' <<< "$RELEASE")
+          TAG=$(jq -er '.tag_name' <<< "$RELEASE")
           VERSION="${TAG#gf2_ab_decrypt_v}"
 
           URL=$(jq -er --arg asset "$ASSET" '
@@ -82,7 +82,10 @@ jobs:
                   hash: $hash
                 }
               },
-              bin: "gf2_ab_decrypt.exe",
+              pre_install: [
+                "Get-ChildItem \"$dir\" -Filter \"gf2_ab_decrypt.exe\" | Rename-Item -NewName \"gf2.exe\""
+              ],
+              bin: "gf2.exe",
               checkver: {
                 github: "https://github.com/0x795E69D8/exilium-tools",
                 regex: "gf2_ab_decrypt_v([\\d.]+)"
@@ -109,12 +112,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add bucket/gf2_ab_decrypt.json
+          git add bucket/gf2.json
 
           if git diff --cached --quiet; then
             echo "No changes to commit."
             exit 0
           fi
 
-          git commit -m "Update GF2 AB Decrypt manifest"
+          git commit -m "Update GF2 Decrypt manifest"
           git push

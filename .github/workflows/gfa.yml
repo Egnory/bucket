@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: gf2-asset-bundle-decryption
+  group: gfa-decrypt
   cancel-in-progress: false
 
 jobs:
@@ -28,7 +28,7 @@ jobs:
 
           REPO="nijinekoyo/GF2AssetBundleDecryption"
           ASSET="GF2AssetBundleDecryption_Windows_x86_64.exe"
-          MANIFEST="bucket/gf2assetbundledecryption.json"
+          MANIFEST="bucket/gfa.json"
 
           API="https://api.github.com/repos/$REPO/releases/latest"
 
@@ -74,7 +74,10 @@ jobs:
                   hash: $hash
                 }
               },
-              bin: "GF2AssetBundleDecryption_Windows_x86_64.exe",
+              pre_install: [
+                "Get-ChildItem \"$dir\" -Filter \"GF2AssetBundleDecryption_Windows_x86_64.exe\" | Rename-Item -NewName \"gfa.exe\""
+              ],
+              bin: "gfa.exe",
               checkver: {
                 github: "https://github.com/nijinekoyo/GF2AssetBundleDecryption"
               },
@@ -100,12 +103,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add bucket/gf2assetbundledecryption.json
+          git add bucket/gfa.json
 
           if git diff --cached --quiet; then
             echo "No changes to commit."
             exit 0
           fi
 
-          git commit -m "Update GF2 Asset Bundle Decryption"
+          git commit -m "Update GFA Decrypt manifest"
           git push
