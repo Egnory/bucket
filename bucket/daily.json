@@ -1,0 +1,15 @@
+{
+  "version": "20261118-183453",
+  "description": "Daily",
+  "homepage": "https://github.com/Egnory/daily",
+  "license": "MIT",
+  "url": "https://github.com/Egnory/daily/releases/download/20261118-183453/daily.exe",
+  "hash": "673766f835deb690b30e7dd0ca29307e92a755b5619a43cb20f433f727890e16",
+  "bin": "daily.exe",
+  "checkver": {
+    "github": "https://github.com/Egnory/daily"
+  },
+  "autoupdate": {
+    "url": "https://github.com/Egnory/daily/releases/download/$version/daily.exe"
+  }
+}
