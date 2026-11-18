@@ -1,0 +1,79 @@
+name: Daily
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          REPO="Egnory/daily"
+          MANIFEST="bucket/daily.json"
+          TEMP="$RUNNER_TEMP/daily.exe"
+
+          RELEASE=$(curl -fLsS --retry 3 \
+            "https://api.github.com/repos/$REPO/releases/latest")
+
+          VERSION=$(jq -er '.tag_name' <<< "$RELEASE")
+          URL=$(jq -er '.assets[] | select(.name == "daily.exe") | .browser_download_url' <<< "$RELEASE")
+
+          curl -fLsS --retry 3 "$URL" -o "$TEMP"
+          HASH=$(sha256sum "$TEMP" | cut -d ' ' -f 1)
+
+          jq -n \
+            --arg version "$VERSION" \
+            --arg url "$URL" \
+            --arg hash "$HASH" \
+            '{
+              version: $version,
+              description: "Daily",
+              homepage: "https://github.com/Egnory/daily",
+              license: "MIT",
+              url: $url,
+              hash: $hash,
+              bin: "daily.exe",
+              checkver: {
+                github: "https://github.com/Egnory/daily"
+              },
+              autoupdate: {
+                url: "https://github.com/Egnory/daily/releases/download/$version/daily.exe"
+              }
+            }' > "$MANIFEST"
+
+          jq empty "$MANIFEST"
+
+      - name: Commit changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add bucket/daily.json
+
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+
+          git commit -m "Update Daily manifest"
+          git push
