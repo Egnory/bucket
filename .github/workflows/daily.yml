@@ -30,14 +30,30 @@ jobs:
           MANIFEST="bucket/daily.json"
           TEMP="$RUNNER_TEMP/daily.exe"
 
+          mkdir -p bucket
+
           RELEASE=$(curl -fLsS --retry 3 \
-            "https://api.github.com/repos/$REPO/releases/latest")
+            "https://api.github.com/repos/$REPO/releases?per_page=100" |
+            jq -cer '
+              [.[] | select(.draft == false and .prerelease == false)]
+              | sort_by(.published_at)
+              | last
+            ')
 
           VERSION=$(jq -er '.tag_name' <<< "$RELEASE")
-          URL=$(jq -er '.assets[] | select(.name == "daily.exe") | .browser_download_url' <<< "$RELEASE")
+          URL=$(jq -er '
+            .assets[]
+            | select(.name == "daily.exe")
+            | .browser_download_url
+          ' <<< "$RELEASE")
+
+          echo "Release: $VERSION"
+          echo "Download: $URL"
 
           curl -fLsS --retry 3 "$URL" -o "$TEMP"
           HASH=$(sha256sum "$TEMP" | cut -d ' ' -f 1)
+
+          echo "SHA256: $HASH"
 
           jq -n \
             --arg version "$VERSION" \
@@ -61,6 +77,9 @@ jobs:
 
           jq empty "$MANIFEST"
 
+          echo "Generated manifest:"
+          cat "$MANIFEST"
+
       - name: Commit changes
         shell: bash
         run: |
@@ -72,6 +91,7 @@ jobs:
           git add bucket/daily.json
 
           if git diff --cached --quiet; then
+            echo "No changes to commit."
             exit 0
           fi
 
