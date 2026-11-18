@@ -32,18 +32,20 @@ jobs:
 
           mkdir -p bucket
 
-          RELEASE=$(curl -fLsS --retry 3 \
-            "https://api.github.com/repos/$REPO/releases?per_page=100" |
-            jq -cer '
-              [.[] | select(.draft == false and .prerelease == false)]
-              | sort_by(.published_at)
-              | last
-            ')
+          RELEASES=$(curl -fLsS --retry 3 \
+            "https://api.github.com/repos/$REPO/releases?per_page=100")
+
+          RELEASE=$(jq -cer '
+            [.[] | select(.draft == false)]
+            | sort_by(.published_at)
+            | last // error("No release found")
+          ' <<< "$RELEASES")
 
           VERSION=$(jq -er '.tag_name' <<< "$RELEASE")
+
           URL=$(jq -er '
-            .assets[]
-            | select(.name == "daily.exe")
+            [.assets[] | select(.name == "daily.exe")]
+            | first // error("daily.exe not found in release")
             | .browser_download_url
           ' <<< "$RELEASE")
 
@@ -51,6 +53,7 @@ jobs:
           echo "Download: $URL"
 
           curl -fLsS --retry 3 "$URL" -o "$TEMP"
+
           HASH=$(sha256sum "$TEMP" | cut -d ' ' -f 1)
 
           echo "SHA256: $HASH"
