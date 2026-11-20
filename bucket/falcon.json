@@ -1,0 +1,24 @@
+{
+  "version": "0.1.4",
+  "description": "Open-source native asset manager written in Rust",
+  "homepage": "https://github.com/AhmedKhan-GH/falcon",
+  "license": "MIT OR Apache-2.0",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/AhmedKhan-GH/falcon/releases/download/v0.1.4/Falcon-x86_64-portable.zip",
+      "hash": "",
+      "extract_dir": "Falcon"
+    }
+  },
+  "bin": "falcon-app.exe",
+  "checkver": {
+    "github": "https://github.com/AhmedKhan-GH/falcon"
+  },
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/AhmedKhan-GH/falcon/releases/download/v$version/Falcon-x86_64-portable.zip"
+      }
+    }
+  }
+}
