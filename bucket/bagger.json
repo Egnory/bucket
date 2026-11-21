@@ -1,0 +1,41 @@
+{
+  "version": "1.2.0",
+  "description": "Bagger is a CLI implementation of Scoop in Rust",
+  "homepage": "https://github.com/vincentmathis/bagger",
+  "license": "Apache-2.0",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/vincentmathis/bagger/releases/download/v1.2.0/bagger-x86_64-pc-windows-msvc.zip",
+      "hash": "eba8c2228f300a7e60cdaee9bb19204df370b9c4a900c2a632633fe7d2faa10f"
+    },
+    "32bit": {
+      "url": "https://github.com/vincentmathis/bagger/releases/download/v1.2.0/bagger-i686-pc-windows-msvc.zip",
+      "hash": "8a2bb82c671622219f5416253fb7fa61c515791d243d37a60373b5efdbdf3f9e"
+    },
+    "arm64": {
+      "url": "https://github.com/vincentmathis/bagger/releases/download/v1.2.0/bagger-aarch64-pc-windows-msvc.zip",
+      "hash": "9118e11672e0c52cea581149b8030fc67801c4cbe7eb70cbb7c1a6cc7084ba7a"
+    }
+  },
+  "bin": "bagger.exe",
+  "checkver": {
+    "github": "https://github.com/vincentmathis/bagger",
+    "regex": "/releases/tag/v([\\w.\\-+]+)"
+  },
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/vincentmathis/bagger/releases/download/v$version/bagger-x86_64-pc-windows-msvc.zip"
+      },
+      "32bit": {
+        "url": "https://github.com/vincentmathis/bagger/releases/download/v$version/bagger-i686-pc-windows-msvc.zip"
+      },
+      "arm64": {
+        "url": "https://github.com/vincentmathis/bagger/releases/download/v$version/bagger-aarch64-pc-windows-msvc.zip"
+      }
+    },
+    "hash": {
+      "url": "$url.sha256"
+    }
+  }
+}
