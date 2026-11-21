@@ -12,7 +12,7 @@
   },
   "bin": ["noctty.exe", "noctty.com"],
   "shortcuts": [["noctty.exe", "noctty"]],
-  "pre_install": ["if (!(Test-Path \"$dir\\config.ghostty\")) { New-Item -ItemType File -Path \"$dir\\config.ghostty\" -Force | Out-Null }"],
+  "pre_install": ["if (!(Test-Path \"$dir/config.ghostty\")) { \"\" | Out-File \"$dir/config.ghostty\" }"],
   "persist": ["config.ghostty"],
   "checkver": {
     "github": "https://github.com/amanthanvi/noctty"
