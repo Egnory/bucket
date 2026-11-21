@@ -13,6 +13,7 @@
   "bin": ["noctty.exe", "noctty.com"],
   "shortcuts": [["noctty.exe", "noctty"]],
   "persist": ["config.ghostty"],
+  "post_install": ["New-Item -ItemType File -Path \"$dir\\noctty.portable\" -Force | Out-Null"],
   "checkver": {
     "github": "https://github.com/amanthanvi/noctty"
   },
