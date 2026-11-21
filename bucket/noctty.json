@@ -10,7 +10,7 @@
       "extract_dir": "noctty"
     }
   },
-  "bin": ["noctty.exe", "noctty.com"],
+  "bin": ["noctty.exe"],
   "shortcuts": [["noctty.exe", "noctty"]],
   "checkver": {
     "github": "https://github.com/amanthanvi/noctty"
