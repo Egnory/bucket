@@ -1,7 +1,6 @@
 name: Excavator
 
 on:
-  push:
   schedule:
     - cron: "55 * * * *"
   workflow_dispatch:
