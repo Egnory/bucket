@@ -20,7 +20,7 @@
   "bin": "bagger.exe",
   "checkver": {
     "github": "https://github.com/vincentmathis/bagger",
-    "regex": "/releases/tag/v([\\w.\\-+]+)"
+    "regex": "v([\\w.\\-+]+)"
   },
   "autoupdate": {
     "architecture": {
