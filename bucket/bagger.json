@@ -19,8 +19,7 @@
   },
   "bin": "bagger.exe",
   "checkver": {
-    "github": "https://github.com/vincentmathis/bagger",
-    "regex": "v([\\w.\\-+]+)"
+    "github": "https://github.com/vincentmathis/bagger"
   },
   "autoupdate": {
     "architecture": {

@@ -23,4 +23,5 @@ jobs:
       - name: Update manifests
         uses: ScoopInstaller/GithubActions@main
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SKIP_UPDATED: 1

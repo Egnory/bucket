@@ -11,8 +11,7 @@
   "bin": "AssetStudio.CLI.exe",
   "shortcuts": [["AssetStudio.GUI.exe", "Studio"]],
   "checkver": {
-    "github": "https://github.com/RazTools/Studio",
-    "regex": "/releases/tag/v([\\d.]+)"
+    "github": "https://github.com/RazTools/Studio"
   },
   "autoupdate": {
     "url": "https://github.com/RazTools/Studio/releases/download/v$version/net8.0-e1d7f5301aa015a3386e245312205969f763c9ae.zip"
