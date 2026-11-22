@@ -1,25 +1,25 @@
 {
-  "version": "6.5.6",
-  "description": "GameStream client for PCs (Windows, Mac, Linux, and Steam Link)",
-  "homepage": "https://github.com/qiin2333/moonlight-qt",
-  "license": "GPL-3.0-only",
-  "architecture": {
-    "64bit": {
-      "url": "https://github.com/qiin2333/moonlight-qt/releases/download/v6.5.6/Moonlight-VPlus-Portable-x64-6.5.6.zip",
-      "hash": "e02447be08eca5ddd2555fd7669a114f6c896fda3b70866401881026c27314e5"
-    }
-  },
-  "pre_install": "if (!(Test-Path \"$persist_dir$($cfg = '/Moonlight Game Streaming Project')\")) { $null = New-Item -ItemType Directory \"$dir$cfg\" }",
-  "bin": "Moonlight.exe",
-  "persist": "Moonlight Game Streaming Project",
-  "checkver": {
-    "github": "https://github.com/qiin2333/moonlight-qt"
-  },
-  "autoupdate": {
+    "version": "6.5.7",
+    "description": "GameStream client for PCs (Windows, Mac, Linux, and Steam Link)",
+    "homepage": "https://github.com/qiin2333/moonlight-qt",
+    "license": "GPL-3.0-only",
     "architecture": {
-      "64bit": {
-        "url": "https://github.com/qiin2333/moonlight-qt/releases/download/v$version/Moonlight-VPlus-Portable-x64-$version.zip"
-      }
+        "64bit": {
+            "url": "https://github.com/qiin2333/moonlight-qt/releases/download/v6.5.7/Moonlight-VPlus-Portable-x64-6.5.7.zip",
+            "hash": "142d48f9bf784228b66a0715c77e23748b5bd91f963c78232ba188511538d069"
+        }
+    },
+    "pre_install": "if (!(Test-Path \"$persist_dir$($cfg = '/Moonlight Game Streaming Project')\")) { $null = New-Item -ItemType Directory \"$dir$cfg\" }",
+    "bin": "Moonlight.exe",
+    "persist": "Moonlight Game Streaming Project",
+    "checkver": {
+        "github": "https://github.com/qiin2333/moonlight-qt"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/qiin2333/moonlight-qt/releases/download/v$version/Moonlight-VPlus-Portable-x64-$version.zip"
+            }
+        }
     }
-  }
 }
