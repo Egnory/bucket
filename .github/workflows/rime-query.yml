@@ -1,4 +1,4 @@
-name: Build rime-query
+name: rime-query
 
 on:
   workflow_dispatch:
@@ -26,6 +26,7 @@ jobs:
           fi
 
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Upstream version: $tag"
 
       - name: Check existing release
         id: existing
@@ -36,6 +37,7 @@ jobs:
         run: |
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release $TAG already exists, skipping."
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
@@ -48,13 +50,43 @@ jobs:
           ref: ${{ steps.upstream.outputs.tag }}
           path: rime.vim
 
+      - name: Install LLVM 22
+        if: steps.existing.outputs.exists != 'true'
+        uses: ZhongRuoyu/setup-llvm@v0
+        with:
+          llvm-version: 22
+
+      - name: Verify Clang
+        if: steps.existing.outputs.exists != 'true'
+        shell: bash
+        run: |
+          clang++ --version
+          clang++ --version | grep -q 'version 22'
+
+      - name: Get librime version
+        if: steps.existing.outputs.exists != 'true'
+        id: librime
+        shell: bash
+        run: |
+          release=$(curl -fsSL \
+            https://api.github.com/repos/rime/librime/releases/latest)
+
+          tag=$(jq -r '.tag_name' <<< "$release")
+
+          if [[ -z "$tag" || "$tag" == "null" ]]; then
+            echo "Failed to get librime release"
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
       - name: Restore librime cache
         if: steps.existing.outputs.exists != 'true'
         id: librime-cache
         uses: actions/cache@v4
         with:
           path: librime
-          key: librime-windows-x64-v1
+          key: librime-windows-x64-${{ steps.librime.outputs.tag }}-v1
 
       - name: Download librime
         if: steps.existing.outputs.exists != 'true' && steps.librime-cache.outputs.cache-hit != 'true'
@@ -92,7 +124,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: rime-query.exe
-          key: rime-query-windows-x64-${{ steps.upstream.outputs.tag }}-v1
+          key: rime-query-windows-x64-${{ steps.upstream.outputs.tag }}-clang22-${{ steps.librime.outputs.tag }}-v2
 
       - name: Build rime-query
         if: steps.existing.outputs.exists != 'true' && steps.build-cache.outputs.cache-hit != 'true'
@@ -117,6 +149,8 @@ jobs:
 
           lib_dir=$(dirname "$lib_file")
 
+          clang++ --version
+
           clang++ -std=c++17 -O2 \
             -I./3rd \
             -I"$include_dir" \
@@ -130,6 +164,8 @@ jobs:
         if: steps.existing.outputs.exists != 'true'
         shell: bash
         run: |
+          set -euo pipefail
+
           test -s rime-query.exe
           file rime-query.exe
 
@@ -145,4 +181,5 @@ jobs:
             Windows x64 binary for [TSalmon3/rime.vim](https://github.com/TSalmon3/rime.vim).
 
             Upstream version: ${{ steps.upstream.outputs.tag }}
+            Clang: 22
           files: rime-query.exe
