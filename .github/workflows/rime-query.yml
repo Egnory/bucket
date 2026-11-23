@@ -1,0 +1,148 @@
+name: Build rime-query
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Get upstream version
+        id: upstream
+        shell: bash
+        run: |
+          release=$(curl -fsSL \
+            https://api.github.com/repos/TSalmon3/rime.vim/releases/latest)
+
+          tag=$(jq -r '.tag_name' <<< "$release")
+
+          if [[ -z "$tag" || "$tag" == "null" ]]; then
+            echo "Failed to get upstream release"
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Check existing release
+        id: existing
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.upstream.outputs.tag }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout upstream
+        if: steps.existing.outputs.exists != 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: TSalmon3/rime.vim
+          ref: ${{ steps.upstream.outputs.tag }}
+          path: rime.vim
+
+      - name: Restore librime cache
+        if: steps.existing.outputs.exists != 'true'
+        id: librime-cache
+        uses: actions/cache@v4
+        with:
+          path: librime
+          key: librime-windows-x64-v1
+
+      - name: Download librime
+        if: steps.existing.outputs.exists != 'true' && steps.librime-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          release=$(curl -fsSL \
+            https://api.github.com/repos/rime/librime/releases/latest)
+
+          asset=$(jq -r '
+            [.assets[]
+              | select(
+                  (.name | ascii_downcase | test("win"))
+                  and (.name | ascii_downcase | test("\\.(zip|7z)$"))
+                )]
+            | first
+            | .browser_download_url // empty
+          ' <<< "$release")
+
+          if [[ -z "$asset" ]]; then
+            echo "No Windows librime archive found."
+            jq -r '.assets[].name' <<< "$release"
+            exit 1
+          fi
+
+          mkdir -p librime
+          curl -fL "$asset" -o librime-package
+          7z x librime-package -olibrime -y
+          rm librime-package
+
+      - name: Restore build cache
+        if: steps.existing.outputs.exists != 'true'
+        id: build-cache
+        uses: actions/cache@v4
+        with:
+          path: rime-query.exe
+          key: rime-query-windows-x64-${{ steps.upstream.outputs.tag }}-v1
+
+      - name: Build rime-query
+        if: steps.existing.outputs.exists != 'true' && steps.build-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cd rime.vim/cpp
+
+          include_dir=$(find "$GITHUB_WORKSPACE/librime" \
+            -type d -name include | head -n 1)
+
+          lib_file=$(find "$GITHUB_WORKSPACE/librime" \
+            -type f \( -iname 'rime.lib' -o -iname 'librime.lib' \) \
+            | head -n 1)
+
+          if [[ -z "$include_dir" || -z "$lib_file" ]]; then
+            echo "Could not locate librime headers or import library."
+            find "$GITHUB_WORKSPACE/librime" -maxdepth 4 -type f
+            exit 1
+          fi
+
+          lib_dir=$(dirname "$lib_file")
+
+          clang++ -std=c++17 -O2 \
+            -I./3rd \
+            -I"$include_dir" \
+            rime-query.cc \
+            -L"$lib_dir" \
+            -lrime \
+            -lws2_32 \
+            -o "$GITHUB_WORKSPACE/rime-query.exe"
+
+      - name: Verify executable
+        if: steps.existing.outputs.exists != 'true'
+        shell: bash
+        run: |
+          test -s rime-query.exe
+          file rime-query.exe
+
+      - name: Publish Release
+        if: steps.existing.outputs.exists != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.upstream.outputs.tag }}
+          name: rime-query ${{ steps.upstream.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: false
+          body: |
+            Windows x64 binary for [TSalmon3/rime.vim](https://github.com/TSalmon3/rime.vim).
+
+            Upstream version: ${{ steps.upstream.outputs.tag }}
+          files: rime-query.exe
