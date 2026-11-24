@@ -6,11 +6,11 @@
   "architecture": {
     "64bit": {
       "url": "https://cdn.kde.org/ci-builds/graphics/krita/master/windows/krita-x64-6.1.0-prealpha-216446ec.zip",
-      "hash": ""
+      "hash": "9cad38ccb7e006dc6f648402781ccb2f6e81ef7c5d358c5b196bd5f46dbb0fd2",
+      "extract_dir": "krita-x64-6.1.0-prealpha-216446ec"
     }
   },
-  "bin": [["krita-x64-$version/bin/krita.exe", "krita-next"]],
-  "shortcuts": [["krita-x64-$version/bin/krita.exe", "Krita Next"]],
+  "bin": [["bin/krita.exe", "krita-next"]],
   "checkver": {
     "url": "https://cdn.kde.org/ci-builds/graphics/krita/master/windows/",
     "regex": "krita-x64-(?<version>[\\d.]+-prealpha-[a-f0-9]+)\\.zip"
@@ -18,7 +18,8 @@
   "autoupdate": {
     "architecture": {
       "64bit": {
-        "url": "https://cdn.kde.org/ci-builds/graphics/krita/master/windows/krita-x64-$version.zip"
+        "url": "https://cdn.kde.org/ci-builds/graphics/krita/master/windows/krita-x64-$version.zip",
+        "extract_dir": "krita-x64-$version"
       }
     }
   }
