@@ -9,7 +9,8 @@
       "hash": ""
     }
   },
-  "bin": "bin/krita.exe",
+  "bin": [["krita-x64-$version/bin/krita.exe", "krita-next"]],
+  "shortcuts": [["krita-x64-$version/bin/krita.exe", "Krita Next"]],
   "checkver": {
     "url": "https://cdn.kde.org/ci-builds/graphics/krita/master/windows/",
     "regex": "krita-x64-(?<version>[\\d.]+-prealpha-[a-f0-9]+)\\.zip"
