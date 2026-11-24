@@ -1,0 +1,24 @@
+{
+  "version": "6.1.0-prealpha-216446ec",
+  "description": "Krita development builds (Next)",
+  "homepage": "https://krita.org/",
+  "license": "GPL-3.0-or-later",
+  "architecture": {
+    "64bit": {
+      "url": "https://cdn.kde.org/ci-builds/graphics/krita/master/windows/krita-x64-6.1.0-prealpha-216446ec.zip",
+      "hash": ""
+    }
+  },
+  "bin": "bin/krita.exe",
+  "checkver": {
+    "url": "https://cdn.kde.org/ci-builds/graphics/krita/master/windows/",
+    "regex": "krita-x64-(?<version>[\\d.]+-prealpha-[a-f0-9]+)\\.zip"
+  },
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://cdn.kde.org/ci-builds/graphics/krita/master/windows/krita-x64-$version.zip"
+      }
+    }
+  }
+}
