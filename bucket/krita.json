@@ -1,11 +1,11 @@
 {
-  "version": "6.0.6-prealpha-21634b51",
+  "version": "6.0.6-prealpha-1573f8c4",
   "description": "Krita Plus",
   "homepage": "https://krita.org/",
   "license": "GPL-3.0-or-later",
   "architecture": {
     "64bit": {
-      "url": "https://cdn.kde.org/ci-builds/graphics/krita/krita-6.0/windows/krita-x64-6.0.6-prealpha-21634b51.zip",
+      "url": "https://cdn.kde.org/ci-builds/graphics/krita/krita-6.0/windows/krita-x64-6.0.6-prealpha-1573f8c4.zip",
       "hash": "",
       "extract_dir": "krita-x64-6.0.6-prealpha-21634b51"
     }
