@@ -7,10 +7,10 @@
     "64bit": {
       "url": "https://cdn.kde.org/ci-builds/graphics/krita/krita-6.0/windows/krita-x64-6.0.6-prealpha-1573f8c4.zip",
       "hash": "",
-      "extract_dir": "krita-x64-6.0.6-prealpha-21634b51"
+      "extract_dir": "krita-x64-6.0.6-prealpha-1573f8c4"
     }
   },
-  "bin": [["bin/krita.exe", "krita-next"]],
+  "bin": [["bin/krita.exe"]],
   "checkver": {
     "url": "https://cdn.kde.org/ci-builds/graphics/krita/krita-6.0/windows/",
     "regex": "krita-x64-(?<version>[\\d.]+-prealpha-[a-f0-9]+)\\.zip"
