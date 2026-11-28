@@ -12,7 +12,8 @@
     },
     "bin": [
         [
-            "bin/krita.exe"
+            "bin/krita.exe",
+            "krita-plus"
         ]
     ],
     "checkver": {
