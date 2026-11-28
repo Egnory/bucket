@@ -1,26 +1,31 @@
 {
-  "version": "6.1.0-prealpha-216446ec",
-  "description": "Krita Next",
-  "homepage": "https://krita.org/",
-  "license": "GPL-3.0-or-later",
-  "architecture": {
-    "64bit": {
-      "url": "https://cdn.kde.org/ci-builds/graphics/krita/master/windows/krita-x64-6.1.0-prealpha-216446ec.zip",
-      "hash": "9cad38ccb7e006dc6f648402781ccb2f6e81ef7c5d358c5b196bd5f46dbb0fd2",
-      "extract_dir": "krita-x64-6.1.0-prealpha-216446ec"
-    }
-  },
-  "bin": [["bin/krita.exe", "krita-next"]],
-  "checkver": {
-    "url": "https://cdn.kde.org/ci-builds/graphics/krita/master/windows/",
-    "regex": "krita-x64-(?<version>[\\d.]+-prealpha-[a-f0-9]+)\\.zip"
-  },
-  "autoupdate": {
+    "version": "6.1.0-prealpha-fc5e9f95",
+    "description": "Krita Next",
+    "homepage": "https://krita.org/",
+    "license": "GPL-3.0-or-later",
     "architecture": {
-      "64bit": {
-        "url": "https://cdn.kde.org/ci-builds/graphics/krita/master/windows/krita-x64-$version.zip",
-        "extract_dir": "krita-x64-$version"
-      }
+        "64bit": {
+            "url": "https://cdn.kde.org/ci-builds/graphics/krita/master/windows/krita-x64-6.1.0-prealpha-fc5e9f95.zip",
+            "hash": "70089d5559b8cd16a3b86e4edb7cde9e206c7a27c2a242cbf59b697bd0856b0c",
+            "extract_dir": "krita-x64-6.1.0-prealpha-fc5e9f95"
+        }
+    },
+    "bin": [
+        [
+            "bin/krita.exe",
+            "krita-next"
+        ]
+    ],
+    "checkver": {
+        "url": "https://cdn.kde.org/ci-builds/graphics/krita/master/windows/",
+        "regex": "krita-x64-(?<version>[\\d.]+-prealpha-[a-f0-9]+)\\.zip"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://cdn.kde.org/ci-builds/graphics/krita/master/windows/krita-x64-$version.zip",
+                "extract_dir": "krita-x64-$version"
+            }
+        }
     }
-  }
 }
